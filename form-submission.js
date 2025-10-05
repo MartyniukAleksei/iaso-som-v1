@@ -1,4 +1,4 @@
-// MINIMAL FIX - Just fixes API call, keeps your existing display
+// COMPLETE FIXED VERSION - Handles all 3 classifications correctly
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("observationForm");
   const submitBtn = document.getElementById("submitBtn");
@@ -9,12 +9,13 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  // Keep all your existing validator code...
+  // Field validators
   const fieldValidators = {
     object_id: (value) => {
       if (!value || value.length === 0) return "Object ID is required";
       if (value.length > 64) return "Object ID must be 64 characters or less";
-      if (!/^[A-Za-z0-9_-]+$/.test(value)) return "Only alphanumeric, hyphens and underscores allowed";
+      if (!/^[A-Za-z0-9_-]+$/.test(value))
+        return "Only alphanumeric, hyphens and underscores allowed";
       return "";
     },
     transit_depth: (value) => {
@@ -56,7 +57,8 @@ document.addEventListener("DOMContentLoaded", function () {
     stellar_temp: (value) => {
       const num = parseInt(value);
       if (isNaN(num)) return "Stellar temperature is required";
-      if (num < 2500 || num > 50000) return "Temperature must be between 2500 and 50000 K";
+      if (num < 2500 || num > 50000)
+        return "Temperature must be between 2500 and 50000 K";
       return "";
     },
     stellar_magnitude: (value) => {
@@ -76,6 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function updateFieldValidation(input) {
     const errorElement = document.getElementById(`${input.name}_error`);
     const errorMsg = validateField(input.name, input.value);
+
     if (errorMsg) {
       input.classList.add("error");
       input.classList.remove("valid");
@@ -93,11 +96,17 @@ document.addEventListener("DOMContentLoaded", function () {
   function validateForm() {
     const formData = new FormData(form);
     let isValid = true;
+
     for (const [name, value] of formData.entries()) {
       const errorMsg = validateField(name, value);
-      if (errorMsg) isValid = false;
+      if (errorMsg) {
+        isValid = false;
+      }
     }
-    if (submitBtn) submitBtn.disabled = !isValid;
+
+    if (submitBtn) {
+      submitBtn.disabled = !isValid;
+    }
     return isValid;
   }
 
@@ -106,16 +115,25 @@ document.addEventListener("DOMContentLoaded", function () {
       updateFieldValidation(e.target);
       validateForm();
     });
-    input.addEventListener("blur", (e) => updateFieldValidation(e.target));
+    input.addEventListener("blur", (e) => {
+      updateFieldValidation(e.target);
+    });
   });
 
   if (fillSampleBtn) {
     fillSampleBtn.addEventListener("click", () => {
       const sampleData = {
-        object_id: "KOI-7016", transit_depth: 1.234, orbital_period: 365.25,
-        transit_duration: 6.5, snr: 12.8, stellar_radius: 1.02,
-        stellar_mass: 0.98, stellar_temp: 5778, stellar_magnitude: 11.5,
+        object_id: "KOI-7016",
+        transit_depth: 1.234,
+        orbital_period: 365.25,
+        transit_duration: 6.5,
+        snr: 12.8,
+        stellar_radius: 1.02,
+        stellar_mass: 0.98,
+        stellar_temp: 5778,
+        stellar_magnitude: 11.5,
       };
+
       Object.entries(sampleData).forEach(([name, value]) => {
         const input = form.querySelector(`[name="${name}"]`);
         if (input) {
@@ -123,25 +141,36 @@ document.addEventListener("DOMContentLoaded", function () {
           updateFieldValidation(input);
         }
       });
+
       validateForm();
     });
   }
 
-  // ONLY CHANGE: FIXED API CALL
+  // FIXED FORM SUBMISSION
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
 
-    setSubmittingState(true);
+    if (!validateForm()) {
+      return;
+    }
 
     const formData = new FormData(form);
     const data = {};
+
     for (const [name, value] of formData.entries()) {
-      data[name] = name === "stellar_temp" ? parseInt(value) : parseFloat(value);
+      if (name === "stellar_temp") {
+        data[name] = parseInt(value);
+      } else if (name === "object_id") {
+        data[name] = value;
+      } else {
+        data[name] = parseFloat(value);
+      }
     }
 
+    setSubmittingState(true);
+
     try {
-      // FIXED: Send ONLY 7 fields API accepts (no stellar_radius)
+      // Prepare API request (ONLY 7 fields, convert transit_depth)
       const apiData = {
         orbital_period: data.orbital_period,
         transit_duration: data.transit_duration,
@@ -158,59 +187,90 @@ document.addEventListener("DOMContentLoaded", function () {
         "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify(apiData),
         }
       );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        console.error("API Error:", errorText);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const result = await response.json();
       console.log("API Response:", result);
 
-      // FIXED: Use YOUR existing functions, just with correct data
+      // Save to localStorage
       saveToLocalStorage(data);
       showWaitingState(data.object_id);
 
-      // Format data for YOUR displayResults function
+      // HANDLE ALL 3 CLASSIFICATION TYPES
       if (result.status === 'success') {
         
+        // CASE 1: FALSE POSITIVE - Show message, NO planet data
         if (result.classification === 'false_positive') {
-          // Show false positive message using your UI
-          const fakeResult = {
+          console.log("FALSE POSITIVE detected");
+          
+          // Create false positive result for display
+          const falsePositiveResult = {
             object_id: data.object_id,
             percent: (result.confidence * 100).toFixed(1),
-            planet_radius: "N/A",
-            semi_major_axis: "N/A",
+            planet_radius: "N/A - False Positive",
+            semi_major_axis: "N/A - Not a Planet",
             eq_temperature: "N/A",
-            message: "False Positive: Not a planet"
+            classification: "FALSE POSITIVE",
+            message: "This is not a planet. Likely an eclipsing binary or instrumental artifact."
           };
-          displayResults(fakeResult);
           
-        } else if (result.properties) {
-          // Call YOUR displayResults with YOUR format
-          const formattedResult = {
+          // Display false positive message
+          setTimeout(() => {
+            displayResults(falsePositiveResult);
+            setSubmittingState(false);
+          }, 500);
+        }
+        
+        // CASE 2 & 3: CONFIRMED EXOPLANET or PLANETARY CANDIDATE - Show properties
+        else if (result.properties) {
+          console.log("PLANET detected:", result.classification);
+          
+          // Format result for YOUR displayResults function
+          const planetResult = {
             object_id: data.object_id,
             percent: (result.confidence * 100).toFixed(1),
             planet_radius: result.properties.planet_radius.toFixed(2),
             semi_major_axis: result.properties.semi_major_axis.toFixed(4),
-            eq_temperature: Math.round(result.properties.planet_temp)
+            eq_temperature: Math.round(result.properties.planet_temp),
+            classification: result.classification.replace(/_/g, ' ').toUpperCase()
           };
           
-          console.log("Calling displayResults with:", formattedResult);
-          displayResults(formattedResult);
+          console.log("Displaying planet data:", planetResult);
+          
+          // Display results
+          setTimeout(() => {
+            displayResults(planetResult);
+            setSubmittingState(false);
+          }, 500);
         }
+        
+        // CASE 4: Unexpected response
+        else {
+          console.error("Unexpected response format");
+          throw new Error("Unexpected API response");
+        }
+        
+      } else {
+        throw new Error(result.error || "API error");
       }
-      
-      setSubmittingState(false);
 
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Submission error:", error);
+      
       alert("API Error: " + error.message + ". Using demo mode.");
       
+      // Fallback to demo data
       showWaitingState(data.object_id);
       setTimeout(() => {
         const demoResult = generateRandomResults(data.object_id);
@@ -220,12 +280,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Keep your existing helper functions
+  // Helper functions
   function saveToLocalStorage(data) {
     try {
-      const submissions = JSON.parse(localStorage.getItem("planetAnalysisSubmissions") || "[]");
-      submissions.push({...data, timestamp: new Date().toISOString(), id: Date.now().toString()});
-      localStorage.setItem("planetAnalysisSubmissions", JSON.stringify(submissions));
+      const submissions = JSON.parse(
+        localStorage.getItem("planetAnalysisSubmissions") || "[]"
+      );
+      submissions.push({
+        ...data,
+        timestamp: new Date().toISOString(),
+        id: Date.now().toString(),
+      });
+      localStorage.setItem(
+        "planetAnalysisSubmissions",
+        JSON.stringify(submissions)
+      );
     } catch (error) {
       console.log("LocalStorage not available");
     }
@@ -252,6 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function setSubmittingState(isSubmitting) {
     if (!submitBtn) return;
+
     const btnText = submitBtn.querySelector(".btn-text");
     const spinner = submitBtn.querySelector(".spinner");
 
