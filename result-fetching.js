@@ -91,102 +91,100 @@
   }
 
 function generateRandomPlanet(seedStr = "") {
-  // Создаем seed на основе seedStr (детерминированно)
-  let seed = 0;
-  for (let i = 0; i < seedStr.length; i++) {
-    seed = (seed << 5) - seed + seedStr.charCodeAt(i);
-    seed = seed & seed; // Преобразуем в 32-битное целое
+  // Игнорируем seedStr и используем полностью случайные данные
+  // Генерируем уникальный ID
+  const objectId = `TIC-${Math.floor(1000000 + Math.random() * 9000000)}`;
+  
+  // Случайный процент вероятности (20-95%)
+  const percent = (20 + Math.random() * 75).toFixed(1);
+  
+  // Случайный размер планеты с разным распределением
+  let planetRadius;
+  const sizeRandom = Math.random();
+  if (sizeRandom < 0.3) {
+    // 30% chance - маленькие планеты (0.3-1.2 R⊕) - землеподобные
+    planetRadius = (0.3 + Math.random() * 0.9).toFixed(2);
+  } else if (sizeRandom < 0.7) {
+    // 40% chance - средние планеты (1.2-2.5 R⊕) - суперземли
+    planetRadius = (1.2 + Math.random() * 1.3).toFixed(2);
+  } else if (sizeRandom < 0.9) {
+    // 20% chance - большие планеты (2.5-5.0 R⊕) - мини-нептуны
+    planetRadius = (2.5 + Math.random() * 2.5).toFixed(2);
+  } else {
+    // 10% chance - гигантские планеты (5.0-12.0 R⊕) - газовые гиганты
+    planetRadius = (5.0 + Math.random() * 7.0).toFixed(2);
   }
   
-  // Если seedStr пустой, добавляем немного случайности
-  if (seed === 0) {
-    seed = Date.now() % 1000000;
-  }
-
-  // Псевдослучайный генератор на основе seed
-  let currentSeed = Math.abs(seed);
-  function random() {
-    currentSeed = (currentSeed * 9301 + 49297) % 233280;
-    return currentSeed / 233280;
-  }
-
-  // Генерируем разные случайные значения для каждого параметра
-  const random1 = random();
-  const random2 = random();
-  const random3 = random();
-  const random4 = random();
-
-  // Более разнообразные вероятности (30-95%)
-  const percent = (30 + random1 * 65).toFixed(1);
-
-  // Разные размеры планет с разной вероятностью
-  let planetRadius;
-  const sizeRandom = random2;
-  if (sizeRandom < 0.4) {
-    // 40% chance - маленькие планеты (0.5-1.5 R⊕)
-    planetRadius = (0.5 + random1 * 1.0).toFixed(2);
-  } else if (sizeRandom < 0.8) {
-    // 40% chance - средние планеты (1.5-3.0 R⊕)
-    planetRadius = (1.5 + random2 * 1.5).toFixed(2);
-  } else {
-    // 20% chance - большие планеты (3.0-6.0 R⊕)
-    planetRadius = (3.0 + random3 * 3.0).toFixed(2);
-  }
-
-  // Разные орбиты с разной вероятностью
+  // Случайная орбита
   let semiMajorAxis;
-  const orbitRandom = random3;
-  if (orbitRandom < 0.3) {
-    // 30% chance - близкие орбиты (0.01-0.05 AU)
-    semiMajorAxis = (0.01 + random4 * 0.04).toFixed(4);
-  } else if (orbitRandom < 0.7) {
-    // 40% chance - средние орбиты (0.05-0.2 AU)
-    semiMajorAxis = (0.05 + random1 * 0.15).toFixed(4);
+  const orbitRandom = Math.random();
+  if (orbitRandom < 0.25) {
+    // 25% chance - очень близкие орбиты (0.005-0.02 AU)
+    semiMajorAxis = (0.005 + Math.random() * 0.015).toFixed(4);
+  } else if (orbitRandom < 0.6) {
+    // 35% chance - близкие орбиты (0.02-0.1 AU)
+    semiMajorAxis = (0.02 + Math.random() * 0.08).toFixed(4);
+  } else if (orbitRandom < 0.85) {
+    // 25% chance - средние орбиты (0.1-0.5 AU)
+    semiMajorAxis = (0.1 + Math.random() * 0.4).toFixed(4);
   } else {
-    // 30% chance - дальние орбиты (0.2-0.5 AU)
-    semiMajorAxis = (0.2 + random2 * 0.3).toFixed(4);
+    // 15% chance - дальние орбиты (0.5-2.0 AU)
+    semiMajorAxis = (0.5 + Math.random() * 1.5).toFixed(4);
   }
-
+  
   // Температура зависит от орбиты и случайного фактора
-  const baseTemp = 1400 / (parseFloat(semiMajorAxis) + 0.1);
-  const tempVariation = (random4 - 0.5) * 400; // ±200K variation
+  const baseTemp = 1600 / (parseFloat(semiMajorAxis) + 0.05);
+  const tempVariation = (Math.random() - 0.5) * 600; // ±300K variation
   const eqTemperature = Math.round(
-    Math.max(500, Math.min(2000, baseTemp + tempVariation))
+    Math.max(200, Math.min(2500, baseTemp + tempVariation))
   );
-
+  
   // Определяем тип планеты на основе параметров
   let planetType = "Unknown";
   const radiusNum = parseFloat(planetRadius);
   const tempNum = eqTemperature;
-
-  if (radiusNum < 1.2) {
-    planetType = tempNum < 1000 ? "Temperate Earth-like" : "Hot Earth-like";
+  
+  if (radiusNum < 0.8) {
+    planetType = "Sub-Earth";
+  } else if (radiusNum < 1.25) {
+    planetType = tempNum < 500 ? "Cold Earth-like" : 
+                tempNum < 1000 ? "Temperate Earth-like" : "Hot Earth-like";
   } else if (radiusNum < 2.0) {
-    planetType = tempNum < 1000 ? "Temperate Super-Earth" : "Hot Super-Earth";
+    planetType = tempNum < 500 ? "Cold Super-Earth" : 
+                tempNum < 1000 ? "Temperate Super-Earth" : "Hot Super-Earth";
   } else if (radiusNum < 4.0) {
-    planetType = tempNum < 1000 ? "Temperate Mini-Neptune" : "Hot Mini-Neptune";
-  } else {
+    planetType = tempNum < 500 ? "Cold Mini-Neptune" : 
+                tempNum < 1000 ? "Temperate Mini-Neptune" : "Hot Mini-Neptune";
+  } else if (radiusNum < 8.0) {
     planetType = "Gas Giant";
+  } else {
+    planetType = "Super-Jupiter";
   }
-
-  // Уровень уверности зависит от процента и случайности
+  
+  // Уровень уверности
   let confidence = "low";
-  if (parseFloat(percent) > 80) confidence = "high";
-  else if (parseFloat(percent) > 60) confidence = "medium";
-
+  const confRandom = Math.random();
+  if (confRandom < 0.3) confidence = "high";
+  else if (confRandom < 0.7) confidence = "medium";
+  
   // Оценка обитаемости (0-10)
   let habitability = 0;
-  if (
-    radiusNum >= 0.8 &&
-    radiusNum <= 1.5 &&
-    tempNum >= 250 &&
-    tempNum <= 350
-  ) {
-    habitability = Math.min(10, Math.round(percent / 10 + random1 * 3));
+  if (radiusNum >= 0.8 && radiusNum <= 1.6 && tempNum >= 200 && tempNum <= 400) {
+    habitability = Math.floor(Math.random() * 8) + 3; // 3-10 для потенциально обитаемых
   }
-
-  // Создаем уникальный object_id на основе seed
-  const objectId = `TIC-${Math.floor(1000000 + random1 * 9000000)}`;
+  
+  // Орбитальный период (в днях) - рассчитываем на основе полуоси
+  const orbitalPeriod = (Math.sqrt(Math.pow(parseFloat(semiMajorAxis), 3)) * 365).toFixed(1);
+  
+  // Эксцентриситет орбиты
+  const eccentricity = (Math.random() * 0.4).toFixed(3);
+  
+  // Метод обнаружения
+  const discoveryMethods = [
+    "Transit", "Radial Velocity", "Microlensing", "Direct Imaging", 
+    "Transit Timing Variations", "Astrometry"
+  ];
+  const discoveryMethod = discoveryMethods[Math.floor(Math.random() * discoveryMethods.length)];
 
   return {
     object_id: objectId,
@@ -197,17 +195,13 @@ function generateRandomPlanet(seedStr = "") {
     planet_type: planetType,
     confidence: confidence,
     habitability_score: habitability,
-    // Дополнительные случайные параметры
-    orbital_eccentricity: (random1 * 0.3).toFixed(3),
-    stellar_distance:
-      (parseFloat(semiMajorAxis) * 150 + random2 * 50).toFixed(1) +
-      " million km",
-    discovery_method: [
-      "Transit",
-      "Radial Velocity",
-      "Microlensing",
-      "Direct Imaging",
-    ][Math.floor(random3 * 4)],
+    orbital_period: orbitalPeriod,
+    orbital_eccentricity: eccentricity,
+    stellar_distance: (parseFloat(semiMajorAxis) * 149.6).toFixed(1) + " million km",
+    discovery_method: discoveryMethod,
+    // Дополнительные параметры для визуализации
+    transit_depth: (0.01 + Math.random() * 3).toFixed(3) + "%",
+    stellar_mass: (0.3 + Math.random() * 2.5).toFixed(2) + " M☉"
   };
 }
 
@@ -378,5 +372,6 @@ function generateRandomPlanet(seedStr = "") {
   window.showTimeoutState = showTimeoutState;
   window.updateWaitingTime = updateWaitingTime;
 })();
+
 
 
