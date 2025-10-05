@@ -245,14 +245,78 @@ document.addEventListener("DOMContentLoaded", function () {
         else if (result.properties) {
           console.log("Planet detected, showing properties");
           
-          displayResults({
-            object_id: data.object_id,
-            planet_radius: result.properties.planet_radius.toFixed(2),
-            semi_major_axis: result.properties.semi_major_axis.toFixed(4),
-            eq_temperature: Math.round(result.properties.planet_temp),
-            percent: (result.confidence * 100).toFixed(1),
-            classification: result.classification
-          });
+          // Show results directly in DOM
+          const resultsSection = document.getElementById("resultsSection");
+          const resultsDisplay = document.getElementById("resultsDisplay");
+          const waitingState = document.getElementById("waitingState");
+          
+          if (waitingState) waitingState.style.display = "none";
+          if (resultsSection) resultsSection.style.display = "block";
+          
+          if (resultsDisplay) {
+            resultsDisplay.style.display = "block";
+            resultsDisplay.innerHTML = `
+              <div style="padding: 20px; background: #f8f9fa; border-radius: 10px; margin: 20px 0;">
+                <h2 style="color: #28a745; margin-bottom: 20px;">Planet Detected!</h2>
+                
+                <div style="margin: 15px 0;">
+                  <strong>Object ID:</strong> ${data.object_id}
+                </div>
+                
+                <div style="margin: 15px 0;">
+                  <strong>Classification:</strong> ${result.classification.replace(/_/g, ' ').toUpperCase()}
+                </div>
+                
+                <div style="margin: 15px 0;">
+                  <strong>Confidence:</strong> ${(result.confidence * 100).toFixed(1)}%
+                </div>
+                
+                <hr style="margin: 20px 0;">
+                
+                <h3>Planet Properties</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                  <div style="padding: 15px; background: white; border-radius: 5px;">
+                    <div style="color: #666; font-size: 12px;">PLANET RADIUS</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #333;">${result.properties.planet_radius.toFixed(2)} R</div>
+                  </div>
+                  
+                  <div style="padding: 15px; background: white; border-radius: 5px;">
+                    <div style="color: #666; font-size: 12px;">TEMPERATURE</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #333;">${Math.round(result.properties.planet_temp)} K</div>
+                  </div>
+                  
+                  <div style="padding: 15px; background: white; border-radius: 5px;">
+                    <div style="color: #666; font-size: 12px;">SEMI-MAJOR AXIS</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #333;">${result.properties.semi_major_axis.toFixed(4)} AU</div>
+                  </div>
+                  
+                  <div style="padding: 15px; background: white; border-radius: 5px;">
+                    <div style="color: #666; font-size: 12px;">IMPACT PARAMETER</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #333;">${result.properties.impact_parameter.toFixed(4)}</div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            console.log("Results displayed on page!");
+          }
+          
+          // Also try calling displayResults if it exists
+          if (typeof displayResults === 'function') {
+            try {
+              displayResults({
+                object_id: data.object_id,
+                planet_radius: result.properties.planet_radius.toFixed(2),
+                semi_major_axis: result.properties.semi_major_axis.toFixed(4),
+                eq_temperature: Math.round(result.properties.planet_temp),
+                percent: (result.confidence * 100).toFixed(1),
+                classification: result.classification
+              });
+            } catch (e) {
+              console.log("displayResults error (using direct DOM instead):", e);
+            }
+          }
           
           setSubmittingState(false);
         }
