@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Обработчик отправки формы - РЕАЛЬНЫЙ API
+  // Обработчик отправки формы - РЕАЛЬНЫЙ API с улучшенной обработкой ошибок
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -187,13 +187,29 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       );
 
+      // Парсим ответ даже при ошибке
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Invalid JSON response: ${responseText}`);
+      }
+
       if (!response.ok) {
+        // Обрабатываем специфические ошибки сервера
+        if (
+          response.status === 400 &&
+          result.error &&
+          result.error.includes("Model not trained")
+        ) {
+          throw new Error("SERVER_NOT_READY");
+        }
         throw new Error(
-          `Server responded with ${response.status}: ${await response.text()}`
+          `Server responded with ${response.status}: ${responseText}`
         );
       }
 
-      const result = await response.json();
       console.log("API response:", result);
 
       // Сохраняем данные
@@ -206,11 +222,23 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (error) {
       console.error("Submission error:", error);
 
-      // Fallback на демо-режим при ошибке
-      alert("Server unavailable. Using demo mode.");
+      // Улучшенная обработка ошибок
+      let alertMessage = "Server unavailable. Using demo mode.";
+
+      if (error.message === "SERVER_NOT_READY") {
+        alertMessage = "⚠️ ML models are loading on server. Using demo mode.";
+      } else if (error.message.includes("Failed to fetch")) {
+        alertMessage = "🌐 Connection issues. Using demo mode.";
+      } else if (error.message.includes("CORS")) {
+        alertMessage = "🛡️ CORS issue. Using demo mode.";
+      }
+
+      alert(alertMessage);
       showWaitingState(data.object_id);
+
+      // Используем случайные демо-данные вместо повторяющихся
       setTimeout(() => {
-        const demoResult = generateQuickResults(data.object_id);
+        const demoResult = generateRandomResults(data.object_id);
         displayResults(demoResult);
         setSubmittingState(false);
       }, 3000);
@@ -237,21 +265,41 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  function generateQuickResults(objectId) {
-    const hash = objectId.split("").reduce((a, b) => {
-      a = (a << 5) - a + b.charCodeAt(0);
-      return a & a;
-    }, 0);
+  // Генерация СЛУЧАЙНЫХ результатов (вместо повторяющихся)
+  function generateRandomResults(objectId) {
+    // Используем случайные числа вместо детерминированного хэша
+    const getRandom = () => {
+      // Используем crypto.getRandomValues для лучшей случайности, если доступно
+      if (window.crypto && window.crypto.getRandomValues) {
+        const array = new Uint32Array(1);
+        window.crypto.getRandomValues(array);
+        return array[0] / (0xffffffff + 1);
+      }
+      // Fallback на Math.random()
+      return Math.random();
+    };
 
-    const positiveHash = Math.abs(hash);
+    const planetRadius = (0.5 + getRandom() * 5.5).toFixed(2); // 0.5-6.0 R⊕
+    const semiMajorAxis = (0.01 + getRandom() * 1.99).toFixed(4); // 0.01-2.0 AU
+    const baseTemp = 1400 / (parseFloat(semiMajorAxis) + 0.1);
+    const tempVariation = (getRandom() - 0.5) * 400;
+    const eqTemperature = Math.round(
+      Math.max(500, Math.min(2000, baseTemp + tempVariation))
+    );
+    const percent = (60 + getRandom() * 35).toFixed(1); // 60-95%
 
     return {
       object_id: objectId,
-      percent: (70 + (positiveHash % 25)).toFixed(1),
-      planet_radius: (1.2 + (positiveHash % 80) / 100).toFixed(2),
-      semi_major_axis: (0.02 + (positiveHash % 50) / 10000).toFixed(4),
-      eq_temperature: 1100 + (positiveHash % 900),
+      percent: percent,
+      planet_radius: planetRadius,
+      semi_major_axis: semiMajorAxis,
+      eq_temperature: eqTemperature,
     };
+  }
+
+  // Старая функция для совместимости (если где-то еще используется)
+  function generateQuickResults(objectId) {
+    return generateRandomResults(objectId);
   }
 
   function setSubmittingState(isSubmitting) {
