@@ -16,8 +16,8 @@
   // =========================
   const POLLING_CONFIG = {
     MAX_POLL_DURATION: 120000, // 2 хв на весь цикл
-    POLL_INTERVAL: 5000,       // 5 с між опитуваннями
-    FETCH_TIMEOUT: 15000,      // 15 с таймаут окремого запиту
+    POLL_INTERVAL: 5000, // 5 с між опитуваннями
+    FETCH_TIMEOUT: 15000, // 15 с таймаут окремого запиту
     API_BASE: "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com",
   };
 
@@ -28,7 +28,11 @@
   // Утиліти
   // =========================
   const $ = (id) => document.getElementById(id);
-  const safe = (fn, ...args) => { try { return fn?.(...args); } catch {} };
+  const safe = (fn, ...args) => {
+    try {
+      return fn?.(...args);
+    } catch {}
+  };
 
   const toNum = (v) => {
     if (v === null || v === undefined) return NaN;
@@ -47,10 +51,16 @@
     return `${m}m ${s % 60}s`;
   };
 
-  async function tryFetch(url, opts = {}, timeoutMs = POLLING_CONFIG.FETCH_TIMEOUT) {
+  async function tryFetch(
+    url,
+    opts = {},
+    timeoutMs = POLLING_CONFIG.FETCH_TIMEOUT
+  ) {
     return await Promise.race([
       fetch(url, opts),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("Fetch timeout")), timeoutMs)),
+      new Promise((_, rej) =>
+        setTimeout(() => rej(new Error("Fetch timeout")), timeoutMs)
+      ),
     ]);
   }
 
@@ -77,7 +87,8 @@
 
   function updateWaitingTime(elapsed) {
     const ts = $("waitingTimestamp");
-    if (ts) ts.textContent = `Analyzing… ${humanTime(elapsed)} (server processing)`;
+    if (ts)
+      ts.textContent = `Analyzing… ${humanTime(elapsed)} (server processing)`;
   }
 
   // Якщо все ж хочеш показувати окремий таймаут-екран — лишаємо функцію,
@@ -90,40 +101,43 @@
     safe(window.setSubmittingState, false);
   }
 
-function generateRandomPlanet(seedStr = "") {
-  // Функция для получения криптографически случайных чисел
-  function getRandom() {
-    const array = new Uint32Array(1);
-    window.crypto.getRandomValues(array);
-    return array[0] / (0xFFFFFFFF + 1);
+  function generateRandomPlanet(seedStr = "") {
+    // Функция для получения криптографически случайных чисел
+    function getRandom() {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      return array[0] / (0xffffffff + 1);
+    }
+
+    // Генерируем только 3 случайных параметра как требуется
+    const planetRadius = (0.5 + getRandom() * 5.5).toFixed(2); // 0.5-6.0 R⊕
+    const semiMajorAxis = (0.01 + getRandom() * 1.99).toFixed(4); // 0.01-2.0 AU
+    const baseTemp = 1400 / (parseFloat(semiMajorAxis) + 0.1);
+    const tempVariation = (getRandom() - 0.5) * 400;
+    const eqTemperature = Math.round(
+      Math.max(500, Math.min(2000, baseTemp + tempVariation))
+    );
+
+    // Остальные параметры могут быть фиксированными или вычисленными
+    const percent = (60 + getRandom() * 35).toFixed(1); // 60-95%
+    const objectId = `TIC-${Math.floor(1000000 + getRandom() * 9000000)}`;
+
+    return {
+      object_id: objectId,
+      percent: percent,
+      planet_radius: planetRadius,
+      semi_major_axis: semiMajorAxis,
+      eq_temperature: eqTemperature,
+      // Остальные параметры для совместимости
+      planet_type: "Exoplanet",
+      confidence: "medium",
+      habitability_score: 0,
+      orbital_period: (
+        Math.sqrt(Math.pow(parseFloat(semiMajorAxis), 3)) * 365
+      ).toFixed(1),
+      orbital_eccentricity: (getRandom() * 0.3).toFixed(3),
+    };
   }
-
-  // Генерируем только 3 случайных параметра как требуется
-  const planetRadius = (0.5 + getRandom() * 5.5).toFixed(2); // 0.5-6.0 R⊕
-  const semiMajorAxis = (0.01 + getRandom() * 1.99).toFixed(4); // 0.01-2.0 AU
-  const baseTemp = 1400 / (parseFloat(semiMajorAxis) + 0.1);
-  const tempVariation = (getRandom() - 0.5) * 400;
-  const eqTemperature = Math.round(Math.max(500, Math.min(2000, baseTemp + tempVariation)));
-
-  // Остальные параметры могут быть фиксированными или вычисленными
-  const percent = (60 + getRandom() * 35).toFixed(1); // 60-95%
-  const objectId = `TIC-${Math.floor(1000000 + getRandom() * 9000000)}`;
-
-  return {
-    object_id: objectId,
-    percent: percent,
-    planet_radius: planetRadius,
-    semi_major_axis: semiMajorAxis,
-    eq_temperature: eqTemperature,
-    // Остальные параметры для совместимости
-    planet_type: "Exoplanet",
-    confidence: "medium",
-    habitability_score: 0,
-    orbital_period: (Math.sqrt(Math.pow(parseFloat(semiMajorAxis), 3)) * 365).toFixed(1),
-    orbital_eccentricity: (getRandom() * 0.3).toFixed(3),
-  };
-}
-
 
   // =========================
   // EXOPLANET iframe (канвас)
@@ -143,15 +157,19 @@ function generateRandomPlanet(seedStr = "") {
     if (!sec || !frame) return;
 
     const params = new URLSearchParams();
-    if (Number.isFinite(result.planet_radius)) params.set("radius", result.planet_radius);
+    if (Number.isFinite(result.planet_radius))
+      params.set("radius", result.planet_radius);
     if (Number.isFinite(result.semi_major_axis)) {
       params.set("avgDist", result.semi_major_axis);
       params.set("transitDist", result.semi_major_axis);
     }
-    if (Number.isFinite(result.eq_temperature)) params.set("temp", result.eq_temperature);
-    if (Number.isFinite(result.orbital_period)) params.set("period", result.orbital_period);
+    if (Number.isFinite(result.eq_temperature))
+      params.set("temp", result.eq_temperature);
+    if (Number.isFinite(result.orbital_period))
+      params.set("period", result.orbital_period);
 
-    const url = "exoplanet.html" + (params.toString() ? `?${params.toString()}` : "");
+    const url =
+      "exoplanet.html" + (params.toString() ? `?${params.toString()}` : "");
     if (frame.getAttribute("src") !== url) frame.setAttribute("src", url);
 
     sec.style.display = "block";
@@ -167,7 +185,10 @@ function generateRandomPlanet(seedStr = "") {
     const results = $("resultsDisplay");
     if (results) results.style.display = "block";
 
-    const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+    const set = (id, text) => {
+      const el = $(id);
+      if (el) el.textContent = text;
+    };
 
     const percent = result.percent ?? result.score_percent ?? "";
     const objectId = result.object_id ?? result.tic_id ?? result.id ?? "—";
@@ -177,19 +198,33 @@ function generateRandomPlanet(seedStr = "") {
     const period = toNum(result.orbital_period);
 
     set("result_object_id", String(objectId));
-    set("resultPercent", Number.isFinite(percent) ? `${percent}%` : String(percent || "—"));
-    if (Number.isFinite(radius)) set("result_planet_radius", `${fmt(radius, 2)} R⊕`);
+    set(
+      "resultPercent",
+      Number.isFinite(percent) ? `${percent}%` : String(percent || "—")
+    );
+    if (Number.isFinite(radius))
+      set("result_planet_radius", `${fmt(radius, 2)} R⊕`);
     if (Number.isFinite(a)) set("result_semi_major_axis", `${fmt(a, 3)} AU`);
-    if (Number.isFinite(temp)) set("result_eq_temperature", `${fmt(temp, 0)} K`);
+    if (Number.isFinite(temp))
+      set("result_eq_temperature", `${fmt(temp, 0)} K`);
     if (Number.isFinite(period) && $("result_orbital_period")) {
       set("result_orbital_period", `${fmt(period, 1)} d`);
     }
 
     safe(window.setSubmittingState, false);
-    showExoplanetCanvas({ planet_radius: radius, semi_major_axis: a, eq_temperature: temp, orbital_period: period });
+    showExoplanetCanvas({
+      planet_radius: radius,
+      semi_major_axis: a,
+      eq_temperature: temp,
+      orbital_period: period,
+    });
 
     // опціональна нотифікація для інших слухачів
-    try { document.dispatchEvent(new CustomEvent("analysis:complete", { detail: result })); } catch {}
+    try {
+      document.dispatchEvent(
+        new CustomEvent("analysis:complete", { detail: result })
+      );
+    } catch {}
   }
 
   // =========================
@@ -233,7 +268,9 @@ function generateRandomPlanet(seedStr = "") {
       try {
         console.log(`🔍 Poll attempt ${attempt}`);
         const res = await tryFetch(
-          `${POLLING_CONFIG.API_BASE}/analysis/${encodeURIComponent(analysisId)}`,
+          `${POLLING_CONFIG.API_BASE}/analysis/${encodeURIComponent(
+            analysisId
+          )}`,
           { method: "GET" },
           POLLING_CONFIG.FETCH_TIMEOUT
         );
@@ -291,7 +328,3 @@ function generateRandomPlanet(seedStr = "") {
   window.showTimeoutState = showTimeoutState;
   window.updateWaitingTime = updateWaitingTime;
 })();
-
-
-
-
