@@ -124,6 +124,7 @@ document.addEventListener("DOMContentLoaded", function () {
       updateFieldValidation(e.target);
     });
   });
+
   if (fillSampleBtn) {
     fillSampleBtn.addEventListener("click", () => {
       const sampleData = {
@@ -175,14 +176,21 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       // Prepare API request with ONLY the 7 fields it accepts
       const apiData = {
-        orbital_period: data.orbital_period,
-        transit_duration: data.transit_duration,
-        transit_depth: data.transit_depth / 100,  // Convert % to decimal
-        snr: data.snr,
-        stellar_mass: data.stellar_mass,
-        stellar_temp: data.stellar_temp,
-        stellar_magnitude: data.stellar_magnitude
+        orbital_period: parseFloat(data.orbital_period) || 0,
+        transit_duration: parseFloat(data.transit_duration) || 0,
+        transit_depth: (parseFloat(data.transit_depth) || 0) / 100,  // Convert % to decimal
+        snr: parseFloat(data.snr) || 0,
+        stellar_mass: parseFloat(data.stellar_mass) || 0,
+        stellar_temp: parseInt(data.stellar_temp) || 0,
+        stellar_magnitude: parseFloat(data.stellar_magnitude) || 0
       };
+
+      // Validate no NaN values
+      const hasNaN = Object.values(apiData).some(v => isNaN(v) || v === 0);
+      if (hasNaN) {
+        console.error("Invalid data detected:", apiData);
+        throw new Error("Please fill all fields with valid numbers");
+      }
 
       console.log("Sending to API:", apiData);
 
@@ -205,6 +213,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const result = await response.json();
       console.log("API Response:", result);
+
       // Handle all 3 classification types
       if (result.status === 'success') {
         
