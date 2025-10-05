@@ -90,29 +90,31 @@
     safe(window.setSubmittingState, false);
   }
 
-  // =========================
-  // РАНДОМ екзопланета (fallback)
-  // =========================
-  function generateRandomPlanet(seedStr = "") {
-  // Создаем более случайный seed на основе objectId и текущего времени
-  const seed = objectId.split("").reduce((a, b, index) => {
-    a = (a << 5) - a + b.charCodeAt(0) + index + (Date.now() % 1000);
-    return a & a;
-  }, 0);
-
-  const positiveSeed = Math.abs(seed);
+function generateRandomPlanet(seedStr = "") {
+  // Создаем seed на основе seedStr (детерминированно)
+  let seed = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    seed = (seed << 5) - seed + seedStr.charCodeAt(i);
+    seed = seed & seed; // Преобразуем в 32-битное целое
+  }
+  
+  // Если seedStr пустой, добавляем немного случайности
+  if (seed === 0) {
+    seed = Date.now() % 1000000;
+  }
 
   // Псевдослучайный генератор на основе seed
+  let currentSeed = Math.abs(seed);
   function random() {
-    const x = Math.sin(positiveSeed + 1) * 10000;
-    return x - Math.floor(x);
+    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+    return currentSeed / 233280;
   }
 
   // Генерируем разные случайные значения для каждого параметра
   const random1 = random();
-  const random2 = (Math.sin(positiveSeed * 0.5) * 10000) % 1;
-  const random3 = (Math.cos(positiveSeed * 0.3) * 10000) % 1;
-  const random4 = (Math.tan(positiveSeed * 0.7) * 10000) % 1;
+  const random2 = random();
+  const random3 = random();
+  const random4 = random();
 
   // Более разнообразные вероятности (30-95%)
   const percent = (30 + random1 * 65).toFixed(1);
@@ -182,6 +184,9 @@
   ) {
     habitability = Math.min(10, Math.round(percent / 10 + random1 * 3));
   }
+
+  // Создаем уникальный object_id на основе seed
+  const objectId = `TIC-${Math.floor(1000000 + random1 * 9000000)}`;
 
   return {
     object_id: objectId,
@@ -373,4 +378,5 @@
   window.showTimeoutState = showTimeoutState;
   window.updateWaitingTime = updateWaitingTime;
 })();
+
 
