@@ -1,6 +1,4 @@
-// COMPLETE WORKING VERSION - READY TO USE
-// Copy this entire file to your GitHub repo as js/form-submission.js
-
+// FINAL VERSION WITH DEBUG LOGGING
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("observationForm");
   const submitBtn = document.getElementById("submitBtn");
@@ -11,71 +9,46 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  // Field validators
+  // Field validators (keeping your existing ones)
   const fieldValidators = {
-    object_id: (value) => {
-      if (!value || value.length === 0) return "Object ID is required";
-      if (value.length > 64) return "Object ID must be 64 characters or less";
-      if (!/^[A-Za-z0-9_-]+$/.test(value))
-        return "Only alphanumeric, hyphens and underscores allowed";
-      return "";
-    },
+    object_id: (value) => !value ? "Object ID required" : "",
     transit_depth: (value) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return "Transit depth is required";
-      if (num < 0 || num > 100)
-        return "Transit depth must be between 0 and 100%";
-      return "";
+      return isNaN(num) || num < 0 || num > 100 ? "Invalid transit depth" : "";
     },
     orbital_period: (value) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return "Orbital period is required";
-      if (num <= 0) return "Orbital period must be positive";
-      return "";
+      return isNaN(num) || num <= 0 ? "Invalid orbital period" : "";
     },
     transit_duration: (value) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return "Transit duration is required";
-      if (num <= 0) return "Transit duration must be positive";
-      return "";
+      return isNaN(num) || num <= 0 ? "Invalid transit duration" : "";
     },
     snr: (value) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return "SNR is required";
-      if (num <= 0) return "SNR must be positive";
-      return "";
+      return isNaN(num) || num <= 0 ? "Invalid SNR" : "";
     },
     stellar_radius: (value) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return "Stellar radius is required";
-      if (num <= 0) return "Stellar radius must be positive";
-      return "";
+      return isNaN(num) || num <= 0 ? "Invalid stellar radius" : "";
     },
     stellar_mass: (value) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return "Stellar mass is required";
-      if (num <= 0) return "Stellar mass must be positive";
-      return "";
+      return isNaN(num) || num <= 0 ? "Invalid stellar mass" : "";
     },
     stellar_temp: (value) => {
       const num = parseInt(value);
-      if (isNaN(num)) return "Stellar temperature is required";
-      if (num < 2500 || num > 50000)
-        return "Temperature must be between 2500 and 50000 K";
-      return "";
+      return isNaN(num) || num < 2500 || num > 50000 ? "Invalid temperature" : "";
     },
     stellar_magnitude: (value) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return "Stellar magnitude is required";
-      if (num < -10 || num > 30) return "Magnitude must be between -10 and 30";
-      return "";
+      return isNaN(num) ? "Invalid magnitude" : "";
     },
   };
 
   function validateField(fieldName, value) {
     const validator = fieldValidators[fieldName];
-    if (!validator) return "";
-    return validator(value);
+    return validator ? validator(value) : "";
   }
 
   function updateFieldValidation(input) {
@@ -90,55 +63,33 @@ document.addEventListener("DOMContentLoaded", function () {
       input.classList.remove("error");
       input.classList.add("valid");
       if (errorElement) errorElement.textContent = "";
-    } else {
-      input.classList.remove("error", "valid");
-      if (errorElement) errorElement.textContent = "";
     }
   }
 
   function validateForm() {
     const formData = new FormData(form);
     let isValid = true;
-
     for (const [name, value] of formData.entries()) {
-      const errorMsg = validateField(name, value);
-      if (errorMsg) {
-        isValid = false;
-      }
+      if (validateField(name, value)) isValid = false;
     }
-
-    if (submitBtn) {
-      submitBtn.disabled = !isValid;
-    }
+    if (submitBtn) submitBtn.disabled = !isValid;
     return isValid;
   }
 
-  // Add event handlers
   form.querySelectorAll("input").forEach((input) => {
     input.addEventListener("input", (e) => {
       updateFieldValidation(e.target);
       validateForm();
-    });
-
-    input.addEventListener("blur", (e) => {
-      updateFieldValidation(e.target);
     });
   });
 
   if (fillSampleBtn) {
     fillSampleBtn.addEventListener("click", () => {
       const sampleData = {
-        object_id: "KOI-7016",
-        transit_depth: 1.234,
-        orbital_period: 365.25,
-        transit_duration: 6.5,
-        snr: 12.8,
-        stellar_radius: 1.02,
-        stellar_mass: 0.98,
-        stellar_temp: 5778,
-        stellar_magnitude: 11.5,
+        object_id: "KOI-7016", transit_depth: 1.234, orbital_period: 365.25,
+        transit_duration: 6.5, snr: 12.8, stellar_radius: 1.02,
+        stellar_mass: 0.98, stellar_temp: 5778, stellar_magnitude: 11.5,
       };
-
       Object.entries(sampleData).forEach(([name, value]) => {
         const input = form.querySelector(`[name="${name}"]`);
         if (input) {
@@ -146,214 +97,183 @@ document.addEventListener("DOMContentLoaded", function () {
           updateFieldValidation(input);
         }
       });
-
       validateForm();
     });
   }
 
-  // COMPLETE FIXED FORM SUBMISSION
+  // MAIN FORM SUBMISSION - WITH EXTENSIVE DEBUG
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setSubmittingState(true);
 
-    // Get all form data
     const formData = new FormData(form);
     const data = {};
-
     for (const [name, value] of formData.entries()) {
-      if (name === "stellar_temp") {
-        data[name] = parseInt(value);
-      } else {
-        data[name] = parseFloat(value);
-      }
+      data[name] = name === "stellar_temp" ? parseInt(value) : parseFloat(value);
     }
 
     try {
-      // Prepare API request with ONLY the 7 fields it accepts
       const apiData = {
         orbital_period: parseFloat(data.orbital_period) || 0,
         transit_duration: parseFloat(data.transit_duration) || 0,
-        transit_depth: (parseFloat(data.transit_depth) || 0) / 100,  // Convert % to decimal
+        transit_depth: (parseFloat(data.transit_depth) || 0) / 100,
         snr: parseFloat(data.snr) || 0,
         stellar_mass: parseFloat(data.stellar_mass) || 0,
         stellar_temp: parseInt(data.stellar_temp) || 0,
         stellar_magnitude: parseFloat(data.stellar_magnitude) || 0
       };
 
-      // Validate no NaN values
       const hasNaN = Object.values(apiData).some(v => isNaN(v) || v === 0);
       if (hasNaN) {
-        console.error("Invalid data detected:", apiData);
-        throw new Error("Please fill all fields with valid numbers");
+        throw new Error("Invalid data");
       }
 
-      console.log("Sending to API:", apiData);
+      console.log("Sending:", apiData);
 
       const response = await fetch(
         "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(apiData),
-        }
+        { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(apiData) }
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API Error:", errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const result = await response.json();
-      console.log("API Response:", result);
+      console.log("API Result:", result);
 
-      // Handle all 3 classification types
       if (result.status === 'success') {
         
-        // Case 1: False Positive - NO planet properties
-        if (result.classification === 'false_positive') {
-          console.log("False Positive detected");
-          
-          // Show false positive message
-          const resultsSection = document.getElementById("resultsSection");
-          const resultsDisplay = document.getElementById("resultsDisplay");
-          
-          if (resultsSection) resultsSection.style.display = "block";
-          if (resultsDisplay) {
-            resultsDisplay.style.display = "block";
-            resultsDisplay.innerHTML = `
-              <div style="text-align: center; padding: 30px; background: #fff3cd; border-radius: 10px; border: 2px solid #856404;">
-                <h2 style="color: #856404;">False Positive Detected</h2>
-                <p style="font-size: 18px; margin: 20px 0;">This is not a planet.</p>
-                <p>Likely an eclipsing binary star system or instrumental artifact.</p>
-                <p style="margin-top: 20px;"><strong>Confidence:</strong> ${(result.confidence * 100).toFixed(1)}%</p>
-              </div>
-            `;
-          }
-          
-          setSubmittingState(false);
-        }
+        // DEBUG: Check what elements exist
+        console.log("Checking DOM elements...");
+        console.log("  resultsSection:", !!document.getElementById("resultsSection"));
+        console.log("  resultsDisplay:", !!document.getElementById("resultsDisplay"));
+        console.log("  waitingState:", !!document.getElementById("waitingState"));
         
-        // Case 2: Confirmed Exoplanet or Planetary Candidate - HAS properties
-        else if (result.properties) {
-          console.log("Planet detected, showing properties");
+        if (result.classification === 'false_positive') {
+          // FALSE POSITIVE
+          alert("FALSE POSITIVE: Not a planet! Likely eclipsing binary.");
+          setSubmittingState(false);
           
-          // Show results directly in DOM
-          const resultsSection = document.getElementById("resultsSection");
+        } else if (result.properties) {
+          // PLANET (confirmed or candidate)
+          console.log("Displaying planet properties...");
+          
+          // Try multiple display methods to ensure something works
+          
+          // Method 1: Update existing result elements by ID
+          const updateElement = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) {
+              el.textContent = value;
+              console.log(`  Updated ${id}:`, value);
+            } else {
+              console.log(`  Element not found: ${id}`);
+            }
+          };
+          
+          updateElement("result-object-id", data.object_id);
+          updateElement("result-classification", result.classification.toUpperCase());
+          updateElement("result-confidence", (result.confidence * 100).toFixed(1) + "%");
+          updateElement("result-planet-radius", result.properties.planet_radius.toFixed(2));
+          updateElement("result-temperature", Math.round(result.properties.planet_temp));
+          updateElement("result-semi-major-axis", result.properties.semi_major_axis.toFixed(4));
+          updateElement("result-impact-parameter", result.properties.impact_parameter.toFixed(4));
+          
+          // Method 2: Update resultsDisplay with innerHTML
           const resultsDisplay = document.getElementById("resultsDisplay");
-          const waitingState = document.getElementById("waitingState");
-          
-          if (waitingState) waitingState.style.display = "none";
-          if (resultsSection) resultsSection.style.display = "block";
-          
           if (resultsDisplay) {
+            console.log("  Found resultsDisplay, setting innerHTML");
             resultsDisplay.style.display = "block";
             resultsDisplay.innerHTML = `
-              <div style="padding: 20px; background: #f8f9fa; border-radius: 10px; margin: 20px 0;">
-                <h2 style="color: #28a745; margin-bottom: 20px;">Planet Detected!</h2>
+              <div style="padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; color: white; margin: 20px 0;">
+                <h2 style="margin: 0 0 20px 0;">${result.classification.replace(/_/g, ' ').toUpperCase()}</h2>
                 
-                <div style="margin: 15px 0;">
-                  <strong>Object ID:</strong> ${data.object_id}
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                  <div style="font-size: 14px; opacity: 0.9;">Object ID: ${data.object_id}</div>
+                  <div style="font-size: 18px; font-weight: bold; margin-top: 5px;">Confidence: ${(result.confidence * 100).toFixed(1)}%</div>
                 </div>
                 
-                <div style="margin: 15px 0;">
-                  <strong>Classification:</strong> ${result.classification.replace(/_/g, ' ').toUpperCase()}
-                </div>
-                
-                <div style="margin: 15px 0;">
-                  <strong>Confidence:</strong> ${(result.confidence * 100).toFixed(1)}%
-                </div>
-                
-                <hr style="margin: 20px 0;">
-                
-                <h3>Planet Properties</h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
-                  <div style="padding: 15px; background: white; border-radius: 5px;">
-                    <div style="color: #666; font-size: 12px;">PLANET RADIUS</div>
-                    <div style="font-size: 24px; font-weight: bold; color: #333;">${result.properties.planet_radius.toFixed(2)} R</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                  <div style="background: rgba(255,255,255,0.95); padding: 20px; border-radius: 10px; color: #333; text-align: center;">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">PLANET RADIUS</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #667eea;">${result.properties.planet_radius.toFixed(2)}</div>
+                    <div style="font-size: 14px; color: #888;">Earth Radii</div>
                   </div>
                   
-                  <div style="padding: 15px; background: white; border-radius: 5px;">
-                    <div style="color: #666; font-size: 12px;">TEMPERATURE</div>
-                    <div style="font-size: 24px; font-weight: bold; color: #333;">${Math.round(result.properties.planet_temp)} K</div>
+                  <div style="background: rgba(255,255,255,0.95); padding: 20px; border-radius: 10px; color: #333; text-align: center;">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">TEMPERATURE</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #764ba2;">${Math.round(result.properties.planet_temp)}</div>
+                    <div style="font-size: 14px; color: #888;">Kelvin</div>
                   </div>
                   
-                  <div style="padding: 15px; background: white; border-radius: 5px;">
-                    <div style="color: #666; font-size: 12px;">SEMI-MAJOR AXIS</div>
-                    <div style="font-size: 24px; font-weight: bold; color: #333;">${result.properties.semi_major_axis.toFixed(4)} AU</div>
+                  <div style="background: rgba(255,255,255,0.95); padding: 20px; border-radius: 10px; color: #333; text-align: center;">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">SEMI-MAJOR AXIS</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #667eea;">${result.properties.semi_major_axis.toFixed(4)}</div>
+                    <div style="font-size: 14px; color: #888;">AU</div>
                   </div>
                   
-                  <div style="padding: 15px; background: white; border-radius: 5px;">
-                    <div style="color: #666; font-size: 12px;">IMPACT PARAMETER</div>
-                    <div style="font-size: 24px; font-weight: bold; color: #333;">${result.properties.impact_parameter.toFixed(4)}</div>
+                  <div style="background: rgba(255,255,255,0.95); padding: 20px; border-radius: 10px; color: #333; text-align: center;">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">IMPACT PARAMETER</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #764ba2;">${result.properties.impact_parameter.toFixed(4)}</div>
+                    <div style="font-size: 14px; color: #888;">Transit Geometry</div>
                   </div>
                 </div>
               </div>
             `;
-            
-            console.log("Results displayed on page!");
+          } else {
+            console.error("  resultsDisplay element not found!");
           }
           
-          // Also try calling displayResults if it exists
+          // Method 3: Show resultsSection
+          const resultsSection = document.getElementById("resultsSection");
+          if (resultsSection) {
+            console.log("  Showing resultsSection");
+            resultsSection.style.display = "block";
+          } else {
+            console.error("  resultsSection not found!");
+          }
+          
+          // Method 4: Hide waiting state
+          const waitingState = document.getElementById("waitingState");
+          if (waitingState) {
+            console.log("  Hiding waitingState");
+            waitingState.style.display = "none";
+          }
+          
+          // Method 5: Try original displayResults
           if (typeof displayResults === 'function') {
+            console.log("  Calling original displayResults()");
             try {
               displayResults({
                 object_id: data.object_id,
                 planet_radius: result.properties.planet_radius.toFixed(2),
                 semi_major_axis: result.properties.semi_major_axis.toFixed(4),
                 eq_temperature: Math.round(result.properties.planet_temp),
-                percent: (result.confidence * 100).toFixed(1),
-                classification: result.classification
+                percent: (result.confidence * 100).toFixed(1)
               });
             } catch (e) {
-              console.log("displayResults error (using direct DOM instead):", e);
+              console.log("  displayResults() failed:", e.message);
             }
+          } else {
+            console.log("  displayResults() function doesn't exist");
           }
           
+          console.log("ALL DISPLAY METHODS ATTEMPTED");
           setSubmittingState(false);
         }
-        
-        // Case 3: Unexpected response
-        else {
-          console.error("Unexpected response:", result);
-          throw new Error("Unexpected API response format");
-        }
-        
-      } else {
-        throw new Error(result.error || "API returned error status");
       }
 
     } catch (error) {
-      console.error("Submission error:", error);
-      
-      alert("API Error: " + error.message + ". Using demo mode.");
-      
-      // Fallback to demo data
-      const demoResult = {
-        object_id: data.object_id,
-        percent: (70 + Math.random() * 20).toFixed(1),
-        planet_radius: (1 + Math.random() * 8).toFixed(2),
-        semi_major_axis: (0.1 + Math.random() * 1.5).toFixed(4),
-        eq_temperature: Math.round(500 + Math.random() * 1500)
-      };
-      
-      displayResults(demoResult);
+      console.error("Error:", error);
+      alert("Error: " + error.message);
       setSubmittingState(false);
     }
   });
 
-  // Helper function
   function setSubmittingState(isSubmitting) {
     if (!submitBtn) return;
-
     const btnText = submitBtn.querySelector(".btn-text");
     const spinner = submitBtn.querySelector(".spinner");
 
@@ -370,6 +290,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Initialize
+  // Add validation handlers
+  form.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("input", (e) => {
+      updateFieldValidation(e.target);
+      validateForm();
+    });
+  });
+
   validateForm();
+  
+  console.log("Form handler loaded successfully");
 });
