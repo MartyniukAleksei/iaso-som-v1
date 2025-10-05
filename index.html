@@ -58,7 +58,7 @@
                   type="number"
                   id="transit_depth"
                   name="transit_depth"
-                  step="0.001"
+                  step="0.000001"
                   min="0"
                   max="100"
                   required
@@ -101,7 +101,7 @@
                   type="number"
                   id="transit_duration"
                   name="transit_duration"
-                  step="0.01"
+                  step="0.001"
                   min="0.01"
                   required
                   aria-describedby="transit_duration_error"
@@ -122,7 +122,7 @@
                   type="number"
                   id="snr"
                   name="snr"
-                  step="0.1"
+                  step="0.01"
                   min="0.1"
                   required
                   aria-describedby="snr_error"
@@ -143,7 +143,7 @@
                   type="number"
                   id="stellar_radius"
                   name="stellar_radius"
-                  step="0.01"
+                  step="0.001"
                   min="0.01"
                   required
                   aria-describedby="stellar_radius_error"
@@ -164,7 +164,7 @@
                   type="number"
                   id="stellar_mass"
                   name="stellar_mass"
-                  step="0.01"
+                  step="0.001"
                   min="0.01"
                   required
                   aria-describedby="stellar_mass_error"
@@ -207,7 +207,7 @@
                   type="number"
                   id="stellar_magnitude"
                   name="stellar_magnitude"
-                  step="0.01"
+                  step="0.001"
                   min="-10"
                   max="30"
                   required
@@ -268,9 +268,22 @@
                   </tbody>
                 </table>
               </div>
-	      <div id="exoplanetSection" style="display:none;margin-top:2rem;">
-  		<iframe id="exoplanetFrame" src="" width="100%" style="border:0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);background:black;"></iframe>
-	      </div>
+              <div
+                id="exoplanetSection"
+                style="display: none; margin-top: 2rem"
+              >
+                <iframe
+                  id="exoplanetFrame"
+                  src=""
+                  width="100%"
+                  style="
+                    border: 0;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+                    background: black;
+                  "
+                ></iframe>
+              </div>
               <div
                 class="timeout-state"
                 id="timeoutState"
@@ -295,4 +308,3 @@
     <script src="result-fetching.js"></script>
   </body>
 </html>
-

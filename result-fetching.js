@@ -190,6 +190,8 @@
       if (el) el.textContent = text;
     };
 
+    const type = document.querySelector(".result-percent-label");
+    type.innerHTML = result.classification;
     const percent = result.percent ?? result.score_percent ?? "";
     const objectId = result.object_id ?? result.tic_id ?? result.id ?? "—";
     const radius = toNum(result.planet_radius);

@@ -171,12 +171,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     setSubmittingState(true);
-    
+
     // Show waiting state
     const resultsSection = document.getElementById("resultsSection");
     const waitingState = document.getElementById("waitingState");
     const resultsDisplay = document.getElementById("resultsDisplay");
-    
+
     if (resultsSection) resultsSection.style.display = "block";
     if (waitingState) waitingState.style.display = "block";
     if (resultsDisplay) resultsDisplay.style.display = "none";
@@ -186,11 +186,11 @@ document.addEventListener("DOMContentLoaded", function () {
       const apiData = {
         orbital_period: data.orbital_period,
         transit_duration: data.transit_duration,
-        transit_depth: data.transit_depth / 100,  // Convert % to decimal
+        transit_depth: data.transit_depth / 100, // Convert % to decimal
         snr: data.snr,
         stellar_mass: data.stellar_mass,
         stellar_temp: data.stellar_temp,
-        stellar_magnitude: data.stellar_magnitude
+        stellar_magnitude: data.stellar_magnitude,
       };
 
       console.log("Sending to API:", apiData);
@@ -214,32 +214,31 @@ document.addEventListener("DOMContentLoaded", function () {
       console.log("API Response:", result);
 
       // USE RESULT IMMEDIATELY
-      if (result.status === 'success' && result.properties) {
-        
+      if (result.status === "success" && result.properties) {
         const finalResult = {
           object_id: data.object_id,
           percent: (result.confidence * 100).toFixed(1),
           planet_radius: result.properties.planet_radius.toFixed(2),
           semi_major_axis: result.properties.semi_major_axis.toFixed(4),
           eq_temperature: Math.round(result.properties.planet_temp),
-          classification: result.classification
+          classification: result.classification,
         };
 
         console.log("Displaying results:", finalResult);
-        
+
         // Hide waiting, show results
         if (waitingState) waitingState.style.display = "none";
         if (resultsDisplay) resultsDisplay.style.display = "block";
-        
+
         // Call displayResults (from result-fetching.js or wherever it's defined)
-        if (typeof displayResults === 'function') {
+        if (typeof displayResults === "function") {
           displayResults(finalResult);
         } else {
           console.error("displayResults function not found!");
         }
-        
+
         setSubmittingState(false);
-        
+
         // Save to localStorage
         try {
           const submissions = JSON.parse(
@@ -257,36 +256,35 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (err) {
           console.log("LocalStorage not available");
         }
-        
+
         // DONE - Exit here, don't do anything else!
         return;
       }
 
       // If we reach here, response was invalid
       throw new Error("Invalid API response");
-
     } catch (error) {
       console.error("Error:", error);
-      
+
       // Show error or demo data
       alert("API Error: " + error.message + ". Using demo mode.");
-      
+
       // Generate demo data
       const demoResult = {
         object_id: data.object_id,
         percent: (70 + Math.random() * 20).toFixed(1),
         planet_radius: (1 + Math.random() * 5).toFixed(2),
         semi_major_axis: (0.5 + Math.random() * 1.5).toFixed(4),
-        eq_temperature: Math.round(500 + Math.random() * 1500)
+        eq_temperature: Math.round(500 + Math.random() * 1500),
       };
-      
+
       if (waitingState) waitingState.style.display = "none";
       if (resultsDisplay) resultsDisplay.style.display = "block";
-      
-      if (typeof displayResults === 'function') {
+
+      if (typeof displayResults === "function") {
         displayResults(demoResult);
       }
-      
+
       setSubmittingState(false);
     }
   });
