@@ -129,6 +129,15 @@ body {
   font-size: 1.1rem;
 }
 
+#exoplanetSection {
+  animation: fadeIn 0.4s ease;
+}
+
+#exoplanetFrame {
+  width: 100%;
+  display: block;
+}
+
 /* Form Styling */
 .observation-form {
   display: grid;
