@@ -1,4 +1,4 @@
-// Fixed version - Use immediate API response (no polling)
+// COMPLETE WORKING VERSION - Just copy this entire file
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("observationForm");
   const submitBtn = document.getElementById("submitBtn");
@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  // Field validators (unchanged)
+  // Field validators
   const fieldValidators = {
     object_id: (value) => {
       if (!value || value.length === 0) return "Object ID is required";
@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // FIXED: Form submission handler - Use immediate API response
+  // FIXED FORM SUBMISSION - NO POLLING!
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -164,18 +164,25 @@ document.addEventListener("DOMContentLoaded", function () {
       if (name === "stellar_temp") {
         data[name] = parseInt(value);
       } else if (name === "object_id") {
-        data[name] = value;  // Keep object_id for your records
+        data[name] = value;
       } else {
         data[name] = parseFloat(value);
       }
     }
 
     setSubmittingState(true);
+    
+    // Show waiting state
+    const resultsSection = document.getElementById("resultsSection");
+    const waitingState = document.getElementById("waitingState");
+    const resultsDisplay = document.getElementById("resultsDisplay");
+    
+    if (resultsSection) resultsSection.style.display = "block";
+    if (waitingState) waitingState.style.display = "block";
+    if (resultsDisplay) resultsDisplay.style.display = "none";
 
     try {
-      console.log("Sending data to API:", data);
-
-      // Prepare API data (without object_id, API doesn't need it)
+      // Prepare API request (convert transit_depth to decimal)
       const apiData = {
         orbital_period: data.orbital_period,
         transit_duration: data.transit_duration,
@@ -185,6 +192,8 @@ document.addEventListener("DOMContentLoaded", function () {
         stellar_temp: data.stellar_temp,
         stellar_magnitude: data.stellar_magnitude
       };
+
+      console.log("Sending to API:", apiData);
 
       const response = await fetch(
         "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze",
@@ -197,124 +206,92 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       );
 
-      const responseText = await response.text();
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (e) {
-        throw new Error(`Invalid JSON response: ${responseText}`);
-      }
-
       if (!response.ok) {
-        throw new Error(
-          `Server responded with ${response.status}: ${JSON.stringify(result)}`
-        );
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      console.log("API response:", result);
+      const result = await response.json();
+      console.log("API Response:", result);
 
-      // Save to local storage
-      saveToLocalStorage(data);
-      
-      // FIX: Use result immediately - NO POLLING!
+      // USE RESULT IMMEDIATELY
       if (result.status === 'success' && result.properties) {
-        // Format the result for your display function
-        const formattedResult = {
+        
+        const finalResult = {
           object_id: data.object_id,
-          percent: (result.confidence * 100).toFixed(1),  // Convert to percentage
+          percent: (result.confidence * 100).toFixed(1),
           planet_radius: result.properties.planet_radius.toFixed(2),
           semi_major_axis: result.properties.semi_major_axis.toFixed(4),
           eq_temperature: Math.round(result.properties.planet_temp),
-          classification: result.classification,
-          confidence: result.confidence,
-          // Add all properties
-          impact_parameter: result.properties.impact_parameter.toFixed(4)
+          classification: result.classification
         };
 
-        console.log("Formatted result:", formattedResult);
+        console.log("Displaying results:", finalResult);
         
-        // Display results immediately!
-        displayResults(formattedResult);
+        // Hide waiting, show results
+        if (waitingState) waitingState.style.display = "none";
+        if (resultsDisplay) resultsDisplay.style.display = "block";
+        
+        // Call displayResults (from result-fetching.js or wherever it's defined)
+        if (typeof displayResults === 'function') {
+          displayResults(finalResult);
+        } else {
+          console.error("displayResults function not found!");
+        }
+        
         setSubmittingState(false);
         
-      } else {
-        throw new Error("Invalid response format");
+        // Save to localStorage
+        try {
+          const submissions = JSON.parse(
+            localStorage.getItem("planetAnalysisSubmissions") || "[]"
+          );
+          submissions.push({
+            ...finalResult,
+            timestamp: new Date().toISOString(),
+            id: Date.now().toString(),
+          });
+          localStorage.setItem(
+            "planetAnalysisSubmissions",
+            JSON.stringify(submissions)
+          );
+        } catch (err) {
+          console.log("LocalStorage not available");
+        }
+        
+        // DONE - Exit here, don't do anything else!
+        return;
       }
+
+      // If we reach here, response was invalid
+      throw new Error("Invalid API response");
 
     } catch (error) {
-      console.error("Submission error:", error);
-
-      // Handle errors gracefully
-      let alertMessage = "Error connecting to API. Using demo mode.";
-
-      if (error.message.includes("Model not trained")) {
-        alertMessage = "ML models are loading. Using demo mode.";
-      } else if (error.message.includes("Failed to fetch")) {
-        alertMessage = "Network error. Using demo mode.";
-      }
-
-      alert(alertMessage);
+      console.error("Error:", error);
       
-      // Show waiting state
-      showWaitingState(data.object_id);
-
-      // Use demo data as fallback
-      setTimeout(() => {
-        const demoResult = generateRandomResults(data.object_id);
+      // Show error or demo data
+      alert("API Error: " + error.message + ". Using demo mode.");
+      
+      // Generate demo data
+      const demoResult = {
+        object_id: data.object_id,
+        percent: (70 + Math.random() * 20).toFixed(1),
+        planet_radius: (1 + Math.random() * 5).toFixed(2),
+        semi_major_axis: (0.5 + Math.random() * 1.5).toFixed(4),
+        eq_temperature: Math.round(500 + Math.random() * 1500)
+      };
+      
+      if (waitingState) waitingState.style.display = "none";
+      if (resultsDisplay) resultsDisplay.style.display = "block";
+      
+      if (typeof displayResults === 'function') {
         displayResults(demoResult);
-        setSubmittingState(false);
-      }, 2000);
+      }
+      
+      setSubmittingState(false);
     }
   });
 
   // Helper functions
-  function saveToLocalStorage(data) {
-    try {
-      const submissions = JSON.parse(
-        localStorage.getItem("planetAnalysisSubmissions") || "[]"
-      );
-      submissions.push({
-        ...data,
-        timestamp: new Date().toISOString(),
-        id: Date.now().toString(),
-      });
-      localStorage.setItem(
-        "planetAnalysisSubmissions",
-        JSON.stringify(submissions)
-      );
-    } catch (error) {
-      console.log("Local storage not available");
-    }
-  }
-
-  function generateRandomResults(objectId) {
-    const getRandom = () => {
-      if (window.crypto && window.crypto.getRandomValues) {
-        const array = new Uint32Array(1);
-        window.crypto.getRandomValues(array);
-        return array[0] / (0xffffffff + 1);
-      }
-      return Math.random();
-    };
-
-    const planetRadius = (0.5 + getRandom() * 5.5).toFixed(2);
-    const semiMajorAxis = (0.01 + getRandom() * 1.99).toFixed(4);
-    const baseTemp = 1400 / (parseFloat(semiMajorAxis) + 0.1);
-    const tempVariation = (getRandom() - 0.5) * 400;
-    const eqTemperature = Math.round(
-      Math.max(500, Math.min(2000, baseTemp + tempVariation))
-    );
-    const percent = (60 + getRandom() * 35).toFixed(1);
-
-    return {
-      object_id: objectId,
-      percent: percent,
-      planet_radius: planetRadius,
-      semi_major_axis: semiMajorAxis,
-      eq_temperature: eqTemperature,
-    };
-  }
-
   function setSubmittingState(isSubmitting) {
     if (!submitBtn) return;
 
@@ -324,33 +301,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (isSubmitting) {
       submitBtn.classList.add("loading");
       submitBtn.disabled = true;
-      if (btnText) btnText.textContent = "Submitting...";
+      if (btnText) btnText.textContent = "Analyzing...";
       if (spinner) spinner.style.display = "block";
     } else {
       submitBtn.classList.remove("loading");
       if (btnText) btnText.textContent = "Analyze";
       if (spinner) spinner.style.display = "none";
       validateForm();
-    }
-  }
-
-  function showWaitingState(objectId) {
-    const resultsSection = document.getElementById("resultsSection");
-    const waitingState = document.getElementById("waitingState");
-    const resultsDisplay = document.getElementById("resultsDisplay");
-
-    if (resultsSection && waitingState) {
-      resultsSection.style.display = "block";
-      waitingState.style.display = "block";
-      if (resultsDisplay) resultsDisplay.style.display = "none";
-
-      const timestamp = new Date().toLocaleTimeString();
-      const waitingTimestamp = document.getElementById("waitingTimestamp");
-      if (waitingTimestamp) {
-        waitingTimestamp.textContent = `Submitted at ${timestamp}`;
-      }
-
-      resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
