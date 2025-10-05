@@ -1,4 +1,4 @@
-// Ждем загрузки DOM
+// Fixed version - Use immediate API response (no polling)
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("observationForm");
   const submitBtn = document.getElementById("submitBtn");
@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  // Field validators
+  // Field validators (unchanged)
   const fieldValidators = {
     object_id: (value) => {
       if (!value || value.length === 0) return "Object ID is required";
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
     stellar_magnitude: (value) => {
       const num = parseFloat(value);
       if (isNaN(num)) return "Stellar magnitude is required";
-      if (num < -10 || num > 30) return "Magnitude must be between -10 and +30";
+      if (num < -10 || num > 30) return "Magnitude must be between -10 and 30";
       return "";
     },
   };
@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return isValid;
   }
 
-  // Добавляем обработчики событий
+  // Add event handlers
   form.querySelectorAll("input").forEach((input) => {
     input.addEventListener("input", (e) => {
       updateFieldValidation(e.target);
@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Обработчик отправки формы - РЕАЛЬНЫЙ API с улучшенной обработкой ошибок
+  // FIXED: Form submission handler - Use immediate API response
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (name === "stellar_temp") {
         data[name] = parseInt(value);
       } else if (name === "object_id") {
-        data[name] = value;
+        data[name] = value;  // Keep object_id for your records
       } else {
         data[name] = parseFloat(value);
       }
@@ -173,8 +173,18 @@ document.addEventListener("DOMContentLoaded", function () {
     setSubmittingState(true);
 
     try {
-      // РЕАЛЬНЫЙ ЗАПРОС К API
-      console.log("🚀 Sending data to REAL API:", data);
+      console.log("Sending data to API:", data);
+
+      // Prepare API data (without object_id, API doesn't need it)
+      const apiData = {
+        orbital_period: data.orbital_period,
+        transit_duration: data.transit_duration,
+        transit_depth: data.transit_depth / 100,  // Convert % to decimal
+        snr: data.snr,
+        stellar_mass: data.stellar_mass,
+        stellar_temp: data.stellar_temp,
+        stellar_magnitude: data.stellar_magnitude
+      };
 
       const response = await fetch(
         "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze",
@@ -183,11 +193,10 @@ document.addEventListener("DOMContentLoaded", function () {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify(apiData),
         }
       );
 
-      // Парсим ответ даже при ошибке
       const responseText = await response.text();
       let result;
       try {
@@ -197,55 +206,68 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (!response.ok) {
-        // Обрабатываем специфические ошибки сервера
-        if (
-          response.status === 400 &&
-          result.error &&
-          result.error.includes("Model not trained")
-        ) {
-          throw new Error("SERVER_NOT_READY");
-        }
         throw new Error(
-          `Server responded with ${response.status}: ${responseText}`
+          `Server responded with ${response.status}: ${JSON.stringify(result)}`
         );
       }
 
       console.log("API response:", result);
 
-      // Сохраняем данные
+      // Save to local storage
       saveToLocalStorage(data);
-      showWaitingState(data.object_id);
+      
+      // FIX: Use result immediately - NO POLLING!
+      if (result.status === 'success' && result.properties) {
+        // Format the result for your display function
+        const formattedResult = {
+          object_id: data.object_id,
+          percent: (result.confidence * 100).toFixed(1),  // Convert to percentage
+          planet_radius: result.properties.planet_radius.toFixed(2),
+          semi_major_axis: result.properties.semi_major_axis.toFixed(4),
+          eq_temperature: Math.round(result.properties.planet_temp),
+          classification: result.classification,
+          confidence: result.confidence,
+          // Add all properties
+          impact_parameter: result.properties.impact_parameter.toFixed(4)
+        };
 
-      // Начинаем опрос с полученным ID
-      const analysisId = result.analysis_id || data.object_id;
-      startPolling(analysisId);
+        console.log("Formatted result:", formattedResult);
+        
+        // Display results immediately!
+        displayResults(formattedResult);
+        setSubmittingState(false);
+        
+      } else {
+        throw new Error("Invalid response format");
+      }
+
     } catch (error) {
       console.error("Submission error:", error);
 
-      // Улучшенная обработка ошибок
-      let alertMessage = "Server unavailable. Using demo mode.";
+      // Handle errors gracefully
+      let alertMessage = "Error connecting to API. Using demo mode.";
 
-      if (error.message === "SERVER_NOT_READY") {
-        alertMessage = "⚠️ ML models are loading on server. Using demo mode.";
+      if (error.message.includes("Model not trained")) {
+        alertMessage = "ML models are loading. Using demo mode.";
       } else if (error.message.includes("Failed to fetch")) {
-        alertMessage = "🌐 Connection issues. Using demo mode.";
-      } else if (error.message.includes("CORS")) {
-        alertMessage = "🛡️ CORS issue. Using demo mode.";
+        alertMessage = "Network error. Using demo mode.";
       }
 
       alert(alertMessage);
+      
+      // Show waiting state
       showWaitingState(data.object_id);
 
-      // Используем случайные демо-данные вместо повторяющихся
+      // Use demo data as fallback
       setTimeout(() => {
         const demoResult = generateRandomResults(data.object_id);
         displayResults(demoResult);
         setSubmittingState(false);
-      }, 3000);
+      }, 2000);
     }
   });
 
-  // Вспомогательные функции
+  // Helper functions
   function saveToLocalStorage(data) {
     try {
       const submissions = JSON.parse(
@@ -265,28 +287,24 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Генерация СЛУЧАЙНЫХ результатов (вместо повторяющихся)
   function generateRandomResults(objectId) {
-    // Используем случайные числа вместо детерминированного хэша
     const getRandom = () => {
-      // Используем crypto.getRandomValues для лучшей случайности, если доступно
       if (window.crypto && window.crypto.getRandomValues) {
         const array = new Uint32Array(1);
         window.crypto.getRandomValues(array);
         return array[0] / (0xffffffff + 1);
       }
-      // Fallback на Math.random()
       return Math.random();
     };
 
-    const planetRadius = (0.5 + getRandom() * 5.5).toFixed(2); // 0.5-6.0 R⊕
-    const semiMajorAxis = (0.01 + getRandom() * 1.99).toFixed(4); // 0.01-2.0 AU
+    const planetRadius = (0.5 + getRandom() * 5.5).toFixed(2);
+    const semiMajorAxis = (0.01 + getRandom() * 1.99).toFixed(4);
     const baseTemp = 1400 / (parseFloat(semiMajorAxis) + 0.1);
     const tempVariation = (getRandom() - 0.5) * 400;
     const eqTemperature = Math.round(
       Math.max(500, Math.min(2000, baseTemp + tempVariation))
     );
-    const percent = (60 + getRandom() * 35).toFixed(1); // 60-95%
+    const percent = (60 + getRandom() * 35).toFixed(1);
 
     return {
       object_id: objectId,
@@ -295,11 +313,6 @@ document.addEventListener("DOMContentLoaded", function () {
       semi_major_axis: semiMajorAxis,
       eq_temperature: eqTemperature,
     };
-  }
-
-  // Старая функция для совместимости (если где-то еще используется)
-  function generateQuickResults(objectId) {
-    return generateRandomResults(objectId);
   }
 
   function setSubmittingState(isSubmitting) {
@@ -341,6 +354,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Инициализация
+  // Initialize
   validateForm();
 });
