@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  // Field validators (переносим весь код валидации сюда)
+  // Field validators
   const fieldValidators = {
     object_id: (value) => {
       if (!value || value.length === 0) return "Object ID is required";
@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Обработчик отправки формы
+  // Обработчик отправки формы - РЕАЛЬНЫЙ API
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -173,22 +173,41 @@ document.addEventListener("DOMContentLoaded", function () {
     setSubmittingState(true);
 
     try {
-      // ТЕСТОВЫЙ РЕЖИМ - имитация отправки
-      console.log(
-        "🧪 TEST MODE: Simulating server submission for",
-        data.object_id
+      // РЕАЛЬНЫЙ ЗАПРОС К API
+      console.log("🚀 Sending data to REAL API:", data);
+
+      const response = await fetch(
+        "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
       );
+
+      if (!response.ok) {
+        throw new Error(
+          `Server responded with ${response.status}: ${await response.text()}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("API response:", result);
 
       // Сохраняем данные
       saveToLocalStorage(data);
       showWaitingState(data.object_id);
 
-      // Начинаем опрос с тестовой задержкой
-      startPolling(data.object_id);
+      // Начинаем опрос с полученным ID
+      const analysisId = result.analysis_id || data.object_id;
+      startPolling(analysisId);
     } catch (error) {
       console.error("Submission error:", error);
 
-      // Fallback
+      // Fallback на демо-режим при ошибке
+      alert("Server unavailable. Using demo mode.");
       showWaitingState(data.object_id);
       setTimeout(() => {
         const demoResult = generateQuickResults(data.object_id);
@@ -198,7 +217,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Ваши существующие вспомогательные функции
+  // Вспомогательные функции
   function saveToLocalStorage(data) {
     try {
       const submissions = JSON.parse(
