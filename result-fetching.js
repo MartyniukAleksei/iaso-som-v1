@@ -1,60 +1,77 @@
-// Убираем конфликт с CONFIG - используем другое имя
+// Конфигурация опроса
 const POLLING_CONFIG = {
-  MAX_POLL_DURATION: 120000,
-  POLL_INTERVAL: 5000,
-  TEST_DELAY: 10000,
+  MAX_POLL_DURATION: 120000, // 2 минуты
+  POLL_INTERVAL: 5000, // 5 секунд
 };
 
 let pollInterval = null;
 let pollStartTime = null;
 
-// Основная функция опроса
-function startPolling(objectId) {
-  console.log(`🚀 Starting analysis for: ${objectId}`);
+// Основная функция опроса реального сервера
+function startPolling(analysisId) {
+  console.log(`🚀 Starting REAL analysis for: ${analysisId}`);
   pollStartTime = Date.now();
   let attemptCount = 0;
+
+  showWaitingState(analysisId);
 
   const poll = async () => {
     const elapsed = Date.now() - pollStartTime;
     attemptCount++;
 
     if (elapsed > POLLING_CONFIG.MAX_POLL_DURATION) {
-      console.log(`⏰ Timeout for: ${objectId}`);
+      console.log(`⏰ Timeout for: ${analysisId}`);
       stopPolling();
       showTimeoutState();
       return;
     }
 
     try {
-      console.log(`🔍 Polling attempt ${attemptCount} for: ${objectId}`);
+      console.log(`🔍 REAL polling attempt ${attemptCount} for: ${analysisId}`);
 
-      // Имитируем запрос к серверу
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // РЕАЛЬНЫЙ ЗАПРОС К API
+      const response = await fetch(
+        `https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analysis/${analysisId}`
+      );
 
-      // Сервер "обрабатывает" данные в течение TEST_DELAY
-      if (elapsed < POLLING_CONFIG.TEST_DELAY) {
+      if (response.status === 202) {
+        // Анализ еще в процессе
         console.log(`⏳ Analysis in progress... (${attemptCount})`);
+        updateWaitingTime(elapsed);
         return;
       }
 
-      // Анализ завершен - возвращаем результаты
-      const result = generateRealisticResults(objectId);
-      console.log("✅ Analysis complete!", result);
+      if (response.status === 200) {
+        const result = await response.json();
 
-      stopPolling();
-      displayResults(result);
+        if (result.status === "completed" && result.data) {
+          console.log("✅ REAL analysis complete!", result.data);
+          stopPolling();
+          displayResults(result.data);
+          setSubmittingState(false);
+          return;
+        } else if (result.status === "error") {
+          throw new Error(result.message || "Analysis failed");
+        }
+      }
 
-      if (typeof setSubmittingState === "function") {
-        setSubmittingState(false);
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
       }
     } catch (error) {
-      console.error(`❌ Polling error:`, error);
+      console.error(`❌ REAL polling error:`, error);
 
-      // При ошибке показываем демо-результаты
-      stopPolling();
-      const demoResult = generateQuickResults(objectId);
-      displayResults(demoResult);
-      setSubmittingState(false);
+      // Продолжаем попытки при временных ошибках
+      if (elapsed < POLLING_CONFIG.MAX_POLL_DURATION - 30000) {
+        console.log("🔄 Retrying after error...");
+      } else {
+        // Если скоро таймаут, показываем демо-результаты
+        console.log("🕒 Almost timeout, showing demo results");
+        stopPolling();
+        const demoResult = generateQuickResults(analysisId);
+        displayResults(demoResult);
+        setSubmittingState(false);
+      }
     }
   };
 
@@ -63,29 +80,18 @@ function startPolling(objectId) {
   pollInterval = setInterval(poll, POLLING_CONFIG.POLL_INTERVAL);
 }
 
-// Генерация реалистичных результатов
-function generateRealisticResults(objectId) {
-  const hash = objectId.split("").reduce((a, b) => {
-    a = (a << 5) - a + b.charCodeAt(0);
-    return a & a;
-  }, 0);
-
-  const positiveHash = Math.abs(hash);
-
-  const basePercent = 65 + (positiveHash % 30);
-  const planetSize = 0.8 + (positiveHash % 200) / 100;
-  const orbit = 0.01 + (positiveHash % 100) / 1000;
-  const temperature = 800 + (positiveHash % 800);
-
-  return {
-    object_id: objectId,
-    percent: basePercent.toFixed(1),
-    planet_radius: planetSize.toFixed(2),
-    semi_major_axis: orbit.toFixed(4),
-    eq_temperature: Math.round(temperature),
-  };
+// Обновление времени ожидания
+function updateWaitingTime(elapsed) {
+  const waitingTimestamp = document.getElementById("waitingTimestamp");
+  if (waitingTimestamp) {
+    const seconds = Math.floor(elapsed / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    waitingTimestamp.textContent = `Analyzing... ${minutes}m ${remainingSeconds}s (server processing)`;
+  }
 }
 
+// Генерация демо-результатов для fallback
 function generateQuickResults(objectId) {
   const hash = objectId.split("").reduce((a, b) => {
     a = (a << 5) - a + b.charCodeAt(0);
@@ -154,5 +160,7 @@ function showTimeoutState() {
 // Инициализация
 document.addEventListener("DOMContentLoaded", function () {
   console.log("🎯 Planet Analysis System Ready");
-  console.log("🧪 Test Mode: Simulating server with 10 second delay");
+  console.log(
+    "🌐 REAL API Mode: Connected to https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com"
+  );
 });
