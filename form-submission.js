@@ -1,4 +1,4 @@
-// COMPLETE WORKING VERSION - Just copy this entire file
+
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("observationForm");
   const submitBtn = document.getElementById("submitBtn");
