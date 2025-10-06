@@ -1,4 +1,4 @@
-// ULTIMATE FIX - Works with YOUR exact display format
+// PERFECT FINAL VERSION - ALL ISSUES FIXED
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("observationForm");
   const submitBtn = document.getElementById("submitBtn");
@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  // Field validators (keeping all your existing code)
+  // Field validators
   const fieldValidators = {
     object_id: (value) => {
       if (!value || value.length === 0) return "Object ID is required";
@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // ULTIMATE FIX - Works with YOUR display format
+  // PERFECT FORM SUBMISSION - HANDLES ALL 3 TYPES
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -154,13 +154,14 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // CRITICAL FIX: Get form data correctly
     const formData = new FormData(form);
     const data = {};
 
-    // FIX: Keep object_id as STRING (not parsed as number)
+    // Parse each field correctly
     for (const [name, value] of formData.entries()) {
       if (name === "object_id") {
-        data[name] = value;  // Keep as string
+        data[name] = String(value);  // KEEP AS STRING
       } else if (name === "stellar_temp") {
         data[name] = parseInt(value);
       } else {
@@ -168,85 +169,114 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
+    console.log("Form data collected:", data);
+    console.log("Object ID type:", typeof data.object_id, "Value:", data.object_id);
+
     setSubmittingState(true);
 
     try {
-      // Prepare API data (ONLY 7 fields)
+      // Prepare API data (ONLY 7 fields API accepts)
       const apiData = {
-        orbital_period: data.orbital_period,
-        transit_duration: data.transit_duration,
-        transit_depth: data.transit_depth / 100,  // Convert % to decimal
-        snr: data.snr,
-        stellar_mass: data.stellar_mass,
-        stellar_temp: data.stellar_temp,
-        stellar_magnitude: data.stellar_magnitude
+        orbital_period: parseFloat(data.orbital_period),
+        transit_duration: parseFloat(data.transit_duration),
+        transit_depth: parseFloat(data.transit_depth) / 100,  // Convert % to decimal
+        snr: parseFloat(data.snr),
+        stellar_mass: parseFloat(data.stellar_mass),
+        stellar_temp: parseInt(data.stellar_temp),
+        stellar_magnitude: parseFloat(data.stellar_magnitude)
       };
 
-      console.log("API Request:", apiData);
+      console.log("Sending to API:", apiData);
 
       const response = await fetch(
-        "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(apiData),
-        }
+          "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(apiData),
+          }
       );
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error Response:", errorText);
         throw new Error(`HTTP ${response.status}`);
       }
 
       const result = await response.json();
       console.log("API Response:", result);
+      console.log("   Classification:", result.classification);
+      console.log("   Has properties:", !!result.properties);
 
       // Save and show waiting
       saveToLocalStorage(data);
       showWaitingState(data.object_id);
 
-      // Format result for YOUR displayResults() function
+      // PERFECT FORMATTING FOR ALL 3 TYPES
       setTimeout(() => {
         let displayData;
-        
-        // CASE 1: FALSE POSITIVE
+
+        // CASE 1: FALSE POSITIVE - No planet, show FALSE
         if (result.classification === 'false_positive') {
+          console.log("FALSE POSITIVE detected");
+
           displayData = {
-            object_id: String(data.object_id),  // String, not number
+            classification: "FALSE POSITIVE",  // Shows classification
+            object_id: String(data.object_id),  // Shows object ID
             percent: (result.confidence * 100).toFixed(1),
-            planet_radius: "FALSE",  // Shows FALSE
+            planet_radius: "FALSE",  // Shows FALSE instead of data
             semi_major_axis: "FALSE",  // Shows FALSE
             eq_temperature: "FALSE"  // Shows FALSE
           };
-          console.log("FALSE POSITIVE - displaying:", displayData);
         }
-        
-        // CASE 2 & 3: CONFIRMED or CANDIDATE (has properties)
-        else if (result.properties) {
+
+        // CASE 2: CONFIRMED EXOPLANET - Show real planet data
+        else if (result.classification === 'confirmed_exoplanet' && result.properties) {
+          console.log("CONFIRMED EXOPLANET detected");
+
           displayData = {
-            object_id: String(data.object_id),  // String, not number
+            classification: "CONFIRMED EXOPLANET",  // Shows classification
+            object_id: String(data.object_id),  // Shows object ID
             percent: (result.confidence * 100).toFixed(1),
             planet_radius: result.properties.planet_radius.toFixed(2),  // Real value
             semi_major_axis: result.properties.semi_major_axis.toFixed(4),  // Real value
             eq_temperature: Math.round(result.properties.planet_temp)  // Real value
           };
-          console.log("PLANET - displaying:", displayData);
         }
-        
-        // Call YOUR displayResults function
+
+        // CASE 3: PLANETARY CANDIDATE - Show real planet data
+        else if (result.classification === 'planetary_candidate' && result.properties) {
+          console.log("PLANETARY CANDIDATE detected");
+
+          displayData = {
+            classification: "PLANETARY CANDIDATE",  // Shows classification
+            object_id: String(data.object_id),  // Shows object ID
+            percent: (result.confidence * 100).toFixed(1),
+            planet_radius: result.properties.planet_radius.toFixed(2),  // Real value
+            semi_major_axis: result.properties.semi_major_axis.toFixed(4),  // Real value
+            eq_temperature: Math.round(result.properties.planet_temp)  // Real value
+          };
+        }
+
+        // Call displayResults with formatted data
         if (displayData) {
+          console.log("Calling displayResults with:", displayData);
           displayResults(displayData);
+        } else {
+          console.error("No displayData created - unexpected response");
         }
-        
+
         setSubmittingState(false);
       }, 500);
 
     } catch (error) {
-      console.error("Error:", error);
-      alert("API Error. Using demo mode.");
-      
-      showWaitingState(data.object_id);
+      console.error("Submission error:", error);
+      alert("API Error: " + error.message + ". Using demo mode.");
+
+      showWaitingState(String(data.object_id));
       setTimeout(() => {
-        displayResults(generateRandomResults(data.object_id));
+        const demoData = generateRandomResults(String(data.object_id));
+        displayResults(demoData);
         setSubmittingState(false);
       }, 2000);
     }
@@ -256,7 +286,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function saveToLocalStorage(data) {
     try {
       const submissions = JSON.parse(
-        localStorage.getItem("planetAnalysisSubmissions") || "[]"
+          localStorage.getItem("planetAnalysisSubmissions") || "[]"
       );
       submissions.push({
         ...data,
@@ -264,8 +294,8 @@ document.addEventListener("DOMContentLoaded", function () {
         id: Date.now().toString(),
       });
       localStorage.setItem(
-        "planetAnalysisSubmissions",
-        JSON.stringify(submissions)
+          "planetAnalysisSubmissions",
+          JSON.stringify(submissions)
       );
     } catch (error) {
       console.log("LocalStorage not available");
@@ -283,7 +313,8 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     return {
-      object_id: String(objectId),  // String
+      classification: "DEMO MODE",  // Added classification
+      object_id: String(objectId),  // Keep as string
       percent: (60 + getRandom() * 35).toFixed(1),
       planet_radius: (0.5 + getRandom() * 5.5).toFixed(2),
       semi_major_axis: (0.01 + getRandom() * 1.99).toFixed(4),
