@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       console.log("Sending to API:", apiData);
 
-      const response = await fetch("https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com/analyze", {
+      const response = await fetch("https://nasasom-ce245d63159c.herokuapp.com/analyze", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(apiData)
@@ -219,4 +219,5 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   validateForm();
+
 });
