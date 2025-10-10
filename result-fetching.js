@@ -18,7 +18,7 @@
     MAX_POLL_DURATION: 120000, // 2 хв на весь цикл
     POLL_INTERVAL: 5000, // 5 с між опитуваннями
     FETCH_TIMEOUT: 15000, // 15 с таймаут окремого запиту
-    API_BASE: "https://sophia-nasa-ml-app-7bc530f3ab97.herokuapp.com",
+    API_BASE: "https://nasasom-ce245d63159c.herokuapp.com",
   };
 
   let pollInterval = null;
@@ -330,3 +330,4 @@
   window.showTimeoutState = showTimeoutState;
   window.updateWaitingTime = updateWaitingTime;
 })();
+
