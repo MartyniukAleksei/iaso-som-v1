@@ -61,7 +61,64 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (fillSampleBtn) {
     fillSampleBtn.addEventListener("click", () => {
-      const sampleData = {object_id: "KOI-7016", transit_depth: 1.234, orbital_period: 365.25, transit_duration: 6.5, snr: 12.8, stellar_radius: 1.02, stellar_mass: 0.98, stellar_temp: 5778, stellar_magnitude: 11.5};
+      const objects = [
+        {
+          object_id: "KOI-7016",
+          transit_depth: 1.234,
+          orbital_period: 365.25,
+          transit_duration: 6.5,
+          snr: 12.8,
+          stellar_radius: 1.02,
+          stellar_mass: 0.98,
+          stellar_temp: 5778,
+          stellar_magnitude: 11.5,
+        },
+        {
+          object_id: "KELT-9b",
+          transit_depth: 0.7,
+          orbital_period: 1.48,
+          transit_duration: 4.9,
+          snr: 12.8,
+          stellar_radius: 2.36,
+          stellar_mass: 2.52,
+          stellar_temp: 10170,
+          stellar_magnitude: 7.56,
+        },
+        {
+          object_id: "WASP-103b",
+          transit_depth: 0.2,
+          orbital_period: 2,
+          transit_duration: 11,
+          snr: 11,
+          stellar_radius: 1.02,
+          stellar_mass: 0.98,
+          stellar_temp: 9000,
+          stellar_magnitude: 11.4,
+        },
+        {
+          object_id: "KOI-4878",
+          transit_depth: 0.012,
+          orbital_period: 200,
+          transit_duration: 12.5,
+          snr: 2,
+          stellar_radius: 1.1,
+          stellar_mass: 1.04,
+          stellar_temp: 5780,
+          stellar_magnitude: 12.2,
+        },
+        {
+          object_id: "Undefined",
+          transit_depth: 8.9,
+          orbital_period: 38,
+          transit_duration: 12.5,
+          snr: 32,
+          stellar_radius: 1.1,
+          stellar_mass: 0.3,
+          stellar_temp: 2500,
+          stellar_magnitude: 2,
+        },
+      ];
+      const sampleData = objects[Math.floor(Math.random() * objects.length)];
       Object.entries(sampleData).forEach(([name, value]) => {
         const input = form.querySelector(`[name="${name}"]`);
         if (input) { input.value = value; updateFieldValidation(input); }
@@ -221,3 +278,4 @@ document.addEventListener("DOMContentLoaded", function () {
   validateForm();
 
 });
+
